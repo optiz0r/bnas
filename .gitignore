@@ -1,0 +1,8 @@
+# Python Environment
+env
+
+# IDE files
+.idea
+
+# Retry files
+*.retry
