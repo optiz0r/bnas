@@ -26,37 +26,11 @@ cd ~/ansible/bnas
 source env/bin/activate
 ```
 
-Access to the Lab is via one of the VIRL management containers. A bit
-of SSH config is required to allow ansible to tunnel SSH through to the
-network devices.
+Access to the Lab is via one of the VIRL management containers. Since the hosts
+are not directly reachable, connection needs to be proxied through a jump host.
+This config is tested against ansible 2.4.
 
-`./ansible.cfg`
-```ini
-[defaults]
-transport=ssh
-[ssh_connection]
-ssh_args = -F ./ssh_config -o ControlMaster=auto -o ControlPersist=30m
-control_path = ~/.ssh/ansible-%%r@%%h:%%p
-```
-
-`./ssh_config`
-```
-# Lab devices sit in 10.255.0.0/16
-# virl and virl.local both refer to the virl host
-Host 10.255.*
-  ProxyCommand ssh -W %h:%p guest@virl -i ~/.ssh/virl -p 10001
-
-Host virl.local
-  Hostname virl.local
-  Port 10001
-  User guest
-  IdentityFile ~/.ssh/virl
-  ControlMaster auto
-  ControlPath ~/.ssh/ansible-%r@%h:%p
-  ControlPersist 5m
-```
-
-`./inventory`
+`./lab.hosts`
 ```
 [core]
 core1 ios=nxos ansible_host=10.255.0.1
@@ -65,8 +39,7 @@ core1 ios=nxos ansible_host=10.255.0.1
 access1 os=ios ansible_host=10.255.0.2
 
 [all:vars]
-ansible_ssh_user=cisco
-ansible_ssh_pass=******
+ansible_ssh_common_args='-o ProxyCommand="ssh -i ~/.ssh/virl -W %h:%p -q guest@losdtestncore1 -p 10001"'
 ```
 
 ## Production
@@ -98,15 +71,15 @@ Vallard Benincosa's setup described here:
 
 ### Ansible Host
 
-Ansible is running on a bastion host able to connect to all devices in
-the network. The host is running CentOS 6 and so to get recent versions,
-a copy of Python from the SCL is being used, with ansible installed from
-pypi in a virtualenv.
+Like with the lab, access to the production network is via a jump host, since
+the managed devices are not directly reachable. The only difference to the lab
+environment is the `ProxyCommand` parameters.
+This config is tested against ansible 2.4.
 
-To setup the right environment for using ansible:
+`./production.hosts`
+```
+#...
 
-```bash
-cd ~/ansible/netops
-source /opt/rh/python27/enable
-source env/bin/activate
+[all:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -q production.jump.host"'
 ```
