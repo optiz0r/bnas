@@ -1,0 +1,17 @@
+#
+# Check whether Syslog trap servers are configured on devices
+#
+---
+# Retrieve config from the switch
+- name: "Fetch Syslog hosts"
+  ios_command: 
+    commands: "show run | include logging"
+  register: result
+
+# For each syslog host that should be configured, add an error to the list
+# if it is not configured
+- name: "Check Syslog hosts"
+  set_fact: error_no_syslog_server="{{item}} is not configured as Syslog host"
+  when: "not('logging '~item in result.stdout[0]) and not ('logging host '~item in result.stdout[0])"
+  with_items: "{{syslog_servers}}"
+

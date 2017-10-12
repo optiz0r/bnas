@@ -1,0 +1,8 @@
+[core]
+tst1ncore1 os=nxos ansible_host=10.255.0.5
+
+[access]
+tst1naccess1 os=ios ansible_host=10.255.0.3
+
+[all:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -i ~/.ssh/virl -W %h:%p -q guest@losdtestncore1 -p 10001"'

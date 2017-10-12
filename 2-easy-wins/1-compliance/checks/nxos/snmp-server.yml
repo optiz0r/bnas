@@ -1,0 +1,12 @@
+#
+# Check whether SNMP trap servers are configured on devices
+#
+---
+- name: "Fetch SNMP hosts (nxos)"
+  ios_command: 
+    commands: "show snmp host"
+  register: result
+- name: "Check SNMP hosts (nxos)"
+  set_fact: error_no_snmp_server="{{item}} is not configured as SNMP trap host"
+  when: "not(item in result.stdout[0])"
+  with_items: "{{snmp_servers}}"

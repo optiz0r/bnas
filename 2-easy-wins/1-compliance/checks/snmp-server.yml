@@ -1,0 +1,16 @@
+#
+# Check whether SNMP trap servers are configured on devices
+#
+---
+# Retrieve the defined snmp hosts from the switch
+- name: "Fetch SNMP hosts"
+  ios_command: 
+    commands: "show snmp host"
+  register: result
+
+# For each host that should be configured, add an error to the list if it is not there
+- name: "Check SNMP hosts"
+  set_fact: error_no_snmp_server="{{item}} is not configured as SNMP trap host"
+  when: "not('host: '~item in result.stdout[0])"
+  with_items: "{{snmp_servers}}"
+

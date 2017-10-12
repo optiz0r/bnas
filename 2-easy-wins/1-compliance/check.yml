@@ -1,0 +1,52 @@
+---
+- name: Run compliance checks
+  hosts: all
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    # Contains the credentials
+    - "{{inventory_dir}}/secrets/vault.yml"
+
+  vars:
+    # Where we will store the results
+    results_dir: "{{playbook_dir}}/outputs"
+
+    # What format the output should be in. Can be overridden on the command line
+    # Must match the name of a j2 template file in reports directory
+    results_format: "txt"
+
+    # The order in which we search for more-specific versions of the task to run
+    # If we need to, we could add a host-specific filename in here.
+    checks:
+      # OS-specific
+      - "checks/{{os}}/{{check_path|basename}}"
+      # catch-all
+      - "{{check_path}}"
+
+  tasks:
+    # Ensure the output directory exists
+    - name: Create output directories
+      local_action: file path={{results_dir}} state=directory
+      run_once: true
+
+    # Use the list of files in checks/*.yml as the list of checks we're going to run
+    # but rather than run it immediately, check to see if there is a more specific
+    # version of 
+    - name: "Include check tasks"
+      include_tasks: "{{ lookup('first_found', checks) }}"
+      with_fileglob: [ "checks/*.yml" ]
+      loop_control:
+        loop_var: check_path
+
+    # Generate the output report using a template and the variables set by the
+    # individual check tasks
+    - name: "Generate error report"
+      template:
+        src: "reports/{{results_format}}.j2"
+        dest: "{{results_dir}}/report.{{results_format}}"
+      vars:
+        allhosts: "{{hostvars}}"
+      run_once: true
+
+# vim: set ts=2 shiftwidth=2 expandtab :

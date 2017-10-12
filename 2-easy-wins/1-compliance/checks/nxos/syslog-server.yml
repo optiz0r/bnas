@@ -1,0 +1,12 @@
+#
+# Check whether SNMP trap servers are configured on devices
+#
+---
+- name: "Fetch Syslog hosts (nxos)"
+  ios_command: 
+    commands: "show logging server"
+  register: result
+- name: "Check Syslog hosts (nxos)"
+  set_fact: error_no_syslog_server="{{item}} is not configured as Syslog host"
+  when: "not(item in result.stdout[0])"
+  with_items: "{{snmp_servers}}"
