@@ -1,0 +1,96 @@
+hostname {{ inventory_hostname }}
+
+{% for vlan in vlans %}
+vlan {{ vlan.id }}
+  name {{ vlan.name }}
+
+{% endfor %}
+
+interface loopback0
+  ip address {{ routerid|ipaddr('address') }}/32
+  no shutdown
+
+{% for interface in service_interfaces %}
+interface {{ interface.name }}
+  description {{ interface.description }}
+  ip address {{ interface.ip_address }}
+  ip access-group {{ interface.access_group_in }} in
+  no shutdown
+
+{% endfor %}
+
+{% for interface in client_interfaces %}
+interface {{ interface.name }}
+  description {{ interface.description }}
+  switchport mode trunk
+{% if service_vlans %}
+  switchport trunk allowed vlan {{ service_vlans|join(',') }}
+{% endif %}
+  no shut
+
+{% endfor %}
+
+interface Ethernet1/47
+  description Peer link
+  channel-group 47 mode active
+  no shutdown
+
+interface Ethernet1/48
+  description Peer link
+  channel-group 47 mode active
+  no shutdown
+
+interface Port-channel47
+  description Peer link
+  ip address {{ peer_network|ipaddr('1' if side == 'left' else '2') }}
+  switchport mode trunk
+{% if service_vlans %}
+  switchport trunk allowed vlan {{ service_vlans|join(',') }}
+{% endif %}
+  no shutdown
+
+{% for vlan in vlans %}
+interface Vlan{{ vlan.id }}
+  description {{ vlan.description }}
+  ip address {{ vlan.ip_address }}
+  no shutdown
+  ip pim sparse-mode
+  vrrp {{ vlan.vrrp.group }}
+    priority {{ vlan.vrrp.priority }}
+    address {{ vlan.vrrp.ip_address }}
+    no shutdown
+
+{% endfor %}
+
+{% for acl in access_lists %}
+ip access-list {{ acl.name }}
+{% for entry in acl.entries %}
+  {{ loop.index * 10 }} {{ entry }}
+{% endfor %}
+
+{% endfor %}
+
+{% for prefix_list in prefix_lists %}
+ip prefix-list {{ prefix_list.name }}
+{% for prefix in prefix_list.prefixes %}
+  {{ loop.index * 10 }} permit {{ prefix }}
+{% endfor %}
+
+{% endfor %}
+router bgp {{asn}}
+  router-id {{ routerid|ipaddr('address') }}
+  address-family ipv4 unicast
+{% for network in bgp_networks %}
+    network {{ network }}
+{% endfor %}
+
+{% for neighbour in bgp_neighbours %}
+  neighbour {{ neighbour.peer_address }} remote-as {{ neighbour.remote_as }}
+    description {{ neighbour.description }}
+    timers {{ neighbour.timers }}
+    address-family ipv4 unicast
+      prefix-list {{ neighbour.prefix_list_in }} in
+      prefix-list {{ neighbour.prefix_list_out }} out
+      soft-reconfiguration inbounr
+
+{% endfor %}

@@ -1,0 +1,3 @@
+---
+# Invert the switches in s02, just to prove the overrides work
+side: "left"

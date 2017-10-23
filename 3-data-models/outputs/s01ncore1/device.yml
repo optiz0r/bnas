@@ -1,0 +1,98 @@
+---
+routerid: 192.168.47.129/25
+peer_network: 192.168.47.0/30
+asn: 64001
+
+service_vlans: [100, 101]
+
+vlans:
+  - id: 100
+    name: "initech_clients"
+    description: "initech Clients"
+    ip_address: "192.168.36.2/27"
+    vrrp:
+      group: 1
+      ip_address: "192.168.36.1/27"
+      priority: 200
+  - id: 101
+    name: "intertrode_clients"
+    description: "intertrode Clients"
+    ip_address: "192.168.36.34/27"
+    vrrp:
+      group: 2
+      ip_address: "192.168.36.33/27"
+      priority: 200
+
+service_interfaces:
+  - name: "Ethernet1/1"
+    description: "Initech Primary Handoff"
+    ip_address: "172.16.0.2/30"
+    access_group_in: "initech_in"
+  - name: "Ethernet1/2"
+    description: "Intertrode Primary Handoff"
+    ip_address: "172.17.0.1/30"
+    access_group_in: "intertrode_in"
+
+access_lists:
+  - name: "initech_in"
+    entries:
+      - "remark Allow BGP traffic to peer"
+      - "permit tcp 172.16.0.0 255.255.255.252 172.16.0.0 255.255.255.252 eq bgp"
+      - "permit tcp 172.16.0.0 255.255.255.252 eq bgp 172.16.0.0 255.255.255.252"
+      - "remark Allow established TCP connections back to clients"
+      - "permit tcp 172.16.1.0 255.255.255.0 192.168.36.0 255.255.255.224 established"
+      - "permit tcp 172.16.2.0 255.255.255.0 192.168.36.0 255.255.255.224 established"
+      - "remark Allow multicast traffic to defined multicast ranges"
+      - "permit udp any 227.16.1.0 255.255.255.0"
+      - "permit udp any 227.16.2.0 255.255.255.0"
+  - name: "intertrode_in"
+    entries:
+      - "remark Allow BGP traffic to peer"
+      - "permit tcp 172.17.0.0 255.255.255.252 172.17.0.0 255.255.255.252 eq bgp"
+      - "permit tcp 172.17.0.0 255.255.255.252 eq bgp 172.17.0.0 255.255.255.252"
+      - "remark Allow established TCP connections back to clients"
+      - "permit tcp 172.17.1.0 255.255.255.0 192.168.36.32 255.255.255.224 established"
+      - "permit tcp 172.17.2.0 255.255.255.0 192.168.36.32 255.255.255.224 established"
+      - "remark Allow multicast traffic to defined multicast ranges"
+      - "permit udp any 227.17.1.0 255.255.255.0"
+      - "permit udp any 227.17.2.0 255.255.255.0"
+
+prefix_lists:
+  - name: "initech_in"
+    prefixes:
+      - "172.16.1.0/24"
+      - "172.16.2.0/24"
+  - name: "initech_out"
+    prefixes:
+      - "192.168.36.0/27"
+  - name: "intertrode_in"
+    prefixes:
+      - "172.17.1.0/24"
+      - "172.17.2.0/24"
+  - name: "intertrode_out"
+    prefixes:
+      - "192.168.36.32/27"
+
+bgp_networks:
+  - "192.168.36.0/27"
+  - "192.168.36.32/27"
+
+bgp_neighbours:
+  - peer_address: "172.16.0.1"
+    description: "Initech"
+    remote_as: "65001"
+    timers: "5 15"
+    prefix_list_in: "initech_in"
+    prefix_list_out: "initech_out"
+  - peer_address: "172.17.0.2"
+    description: "Intertrode"
+    remote_as: "65002"
+    timers: "10 30"
+    prefix_list_in: "intertrode_in"
+    prefix_list_out: "intertrode_out"
+
+client_interfaces:
+  - name: "Ethernet1/17"
+    description: "Client 1"
+  - name: "Ethernet1/18"
+    description: "Client 2"

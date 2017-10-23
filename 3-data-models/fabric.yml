@@ -1,0 +1,54 @@
+---
+- name: Generate fabric configs
+  hosts: all
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - "{{playbook_dir}}/models/infra.yml"
+    - "{{playbook_dir}}/models/service.yml"
+
+  vars:
+    # Where we will store the results
+    results_dir: "{{playbook_dir}}/outputs"
+    host_results: "{{results_dir}}/{{inventory_hostname}}"
+
+  tasks:
+    # Ensure the output directory exists
+    - name: "Create output directory"
+      local_action: file path="{{results_dir}}" state=directory
+      run_once: true
+
+    # Ensure host output directories exist
+    - name: "Create host output directories"
+      local_action: file path="{{host_results}}" state=directory
+
+    # Set defaults for host_vars, if not already set
+    - name: "Set default variables"
+      set_fact:
+        # Use "location" var if set, in e.g. host_vars, else default to first
+        # three letters of the hostname
+        location: "{{ location | default(inventory_hostname[0:3]) }}"
+
+        # Use "side" var if set, in e.g. host_vars, else default to left if the
+        # number at the end of the switch hostname is "1", and right otherwise
+        side: "{{ side | default('left' if inventory_hostname|regex_replace('.*(\\d+)$', '\\1') == '1' else 'right')}}"
+
+    # Generate the device-specific models from the infrastructure and service
+    # models
+    - name: "Generate device models"
+      template:
+        src: "templates/device-model.j2"
+        dest: "{{host_results}}/device.yml"
+
+    # Load variables from device model
+    - name: "Load device models"
+      include_vars: "{{host_results}}/device.yml"
+
+    # Generate the device-specific configuration from the device model
+    - name: "Generate device config"
+      template:
+        src: "templates/device-config.j2"
+        dest: "{{host_results}}/device.config"
+
+# vim: set ts=2 shiftwidth=2 expandtab:

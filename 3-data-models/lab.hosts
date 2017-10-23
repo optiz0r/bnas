@@ -1,0 +1,11 @@
+[s01]
+s01ncore1 os=nxos ansible_host=10.255.0.5
+s01ncore2 os=nxos ansible_host=10.255.0.6
+
+[s02]
+s02ncore1 os=nxos ansible_host=10.255.0.7
+s02ncore2 os=nxos ansible_host=10.255.0.8
+
+
+[all:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -i ~/.ssh/virl -W %h:%p -q guest@losdtestncore1 -p 10001"'

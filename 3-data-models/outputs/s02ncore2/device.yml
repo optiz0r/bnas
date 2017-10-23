@@ -1,0 +1,17 @@
+---
+routerid: 192.168.63.129/25
+peer_network: 192.168.63.0/30
+asn: 64002
+
+service_vlans: []
+
+vlans: []
+service_interfaces: []
+access_lists: []
+prefix_lists: []
+bgp_networks: []
+bgp_neighbours: []
+
+client_interfaces:
+  - name: "Ethernet1/17"
+    description: "Client 1"

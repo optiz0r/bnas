@@ -4,5 +4,8 @@ env
 # IDE files
 .idea
 
+# Generated files
+*.pyc
+
 # Retry files
 *.retry

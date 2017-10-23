@@ -1,0 +1,92 @@
+---
+routerid: {{ infra[location].routerid_network|ipaddr('net')|ipaddr('1' if side == 'left' else '2') }}
+peer_network: {{ infra[location].ptp_networks|ipsubnet(30, 0) }}
+asn: {{ infra[location].asn }}
+
+{% set local_services=services|selectattr('location', 'equalto', location)|list %}
+service_vlans: {{ local_services|map(attribute='index')|offset(infra[location].vlan_start) }}
+
+{% if local_services %}
+vlans:
+{% for service in local_services %}
+{% set client_network=infra[location].client_networks|ipsubnet(27, service.index) %}
+  - id: {{ service.index|offset(infra[location].vlan_start) }}
+    name: "{{ service.name }}_clients"
+    description: "{{ service.name}} Clients"
+    ip_address: "{{ client_network|ipaddr('2' if side == 'left' else '3') }}"
+    vrrp:
+      group: {{ service.index|offset(1) }}
+      ip_address: "{{ client_network|ipaddr('1') }}"
+      priority: {{ 200 if side == 'left' else 101 }}
+{% endfor %}
+
+service_interfaces:
+{%   for service in local_services %}
+  - name: "Ethernet1/{{ service.index|offset(1) }}"
+    description: "{{ service.name|title }} {{ "Primary" if side == 'left' else "Secondary" }} Handoff"
+    ip_address: "{{ service.neighbours[side].local_address }}"
+    access_group_in: "{{ service.name }}_in"
+{%   endfor %}
+
+access_lists:
+{%   for service in local_services %}
+{% set client_network=infra[location].client_networks|ipsubnet(27, service.index) %}
+  - name: "{{ service.name}}_in"
+    entries:
+      - "remark Allow BGP traffic to peer"
+      - "permit tcp {{ service.neighbours[side].network|ipaddr('network') }} {{ service.neighbours[side].network|ipaddr('netmask') }} {{ service.neighbours[side].network|ipaddr('network') }} {{ service.neighbours[side].network|ipaddr('netmask') }} eq bgp"
+      - "permit tcp {{ service.neighbours[side].network|ipaddr('network') }} {{ service.neighbours[side].network|ipaddr('netmask') }} eq bgp {{ service.neighbours[side].network|ipaddr('network') }} {{ service.neighbours[side].network|ipaddr('netmask') }}"
+      - "remark Allow established TCP connections back to clients"
+{% for prefix in service.prefixes %}
+      - "permit tcp {{ prefix|ipaddr('network') }} {{ prefix|ipaddr('netmask') }} {{ client_network|ipaddr('network') }} {{ client_network|ipaddr('netmask') }} established"
+{% endfor %}
+      - "remark Allow multicast traffic to defined multicast ranges"
+{% for multicast in service.multicast_ranges %}
+      - "permit udp any {{ multicast|ipaddr('network') }} {{ multicast|ipaddr('netmask') }}"
+{% endfor %}
+{%   endfor %}
+
+prefix_lists:
+{%   for service in local_services %}
+  - name: "{{ service.name}}_in"
+    prefixes:
+{% for prefix in service.prefixes %}
+      - "{{ prefix }}"
+{% endfor %}
+  - name: "{{ service.name}}_out"
+    prefixes:
+      - "{{ infra[location].client_networks|ipsubnet(27, service.index)|string }}"
+{%   endfor %}
+
+bgp_networks:
+{%   for service in local_services %}
+  - "{{ infra[location].client_networks|ipsubnet(27, service.index) }}"
+{%   endfor %}
+
+bgp_neighbours:
+{%   for service in local_services %}
+  - peer_address: "{{ service.neighbours[side].peer_address|ipaddr('address') }}"
+    description: "{{ service.name|title }}"
+    remote_as: "{{ service.neighbours[side].asn }}"
+    timers: "{{ service.neighbours[side].timers|default(service_defaults.bgp.timers) }}"
+    prefix_list_in: "{{ service.name }}_in"
+    prefix_list_out: "{{ service.name }}_out"
+{%   endfor %}
+{% else %}
+vlans: []
+service_interfaces: []
+access_lists: []
+prefix_lists: []
+bgp_networks: []
+bgp_neighbours: []
+{% endif %}
+
+{% if infra[location].clients %}
+client_interfaces:
+{% for client_number in range(1, infra[location].clients) %}
+  - name: "Ethernet1/{{ client_number|offset(16) }}"
+    description: "Client {{ client_number }}"
+{% endfor %}
+{% else %}
+client_interfaces: []
+{% endif %}

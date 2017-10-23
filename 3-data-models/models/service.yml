@@ -1,0 +1,51 @@
+---
+service_defaults:
+  bgp:
+    timers: "5 15"
+
+services:
+  - index: 0
+    location: "s01"
+    name: initech
+    neighbours:
+      left:
+        asn: 65001
+        network: 172.16.0.0/30
+        local_address: 172.16.0.2/30
+        peer_address: 172.16.0.1/30
+      right:
+        asn: 65001
+        network: 172.16.0.4/30
+        local_address: 172.16.0.6/30
+        peer_address: 172.16.0.5/30
+    prefixes:
+      - 172.16.1.0/24
+      - 172.16.2.0/24
+    multicast_ranges:
+      - 227.16.1.0/24
+      - 227.16.2.0/24
+
+  - index: 1
+    location: "s01"
+    name: intertrode
+    neighbours:
+      left:
+        asn: 65002
+        network: 172.17.0.0/30
+        local_address: 172.17.0.1/30
+        peer_address: 172.17.0.2/30
+        timers: "10 30"
+      right:
+        asn: 65003
+        network: 172.17.0.4/30
+        local_address: 172.17.0.5/30
+        peer_address: 172.17.0.6/30
+        timers: "10 30"
+    prefixes:
+      - 172.17.1.0/24
+      - 172.17.2.0/24
+    multicast_ranges:
+      - 227.17.1.0/24
+      - 227.17.2.0/24
+
+# vim: set ts=2 shiftwidth=2 expandtab:
